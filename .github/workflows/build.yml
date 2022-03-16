@@ -7,7 +7,7 @@ env:
   version: 1.2.11
 
 jobs:
-  init-release:
+  init:
     runs-on: windows-latest
     outputs:
       output1: "${{ steps.create_release.outputs.upload_url }}"
@@ -48,7 +48,7 @@ jobs:
           echo "${{ steps.create_release.outputs.upload_url }}"
 
   windows-build:
-    needs: init-release
+    needs: init
     runs-on: windows-2019
     strategy:
       matrix:
@@ -97,7 +97,7 @@ jobs:
           asset_content_type: application/zip
 
   linux-build:
-    needs: init-release
+    needs: init
     runs-on: ubuntu-20.04
     strategy:
       matrix:
