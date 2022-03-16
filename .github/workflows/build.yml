@@ -1,0 +1,140 @@
+name: build zlib with version 1.2.11
+
+on:
+  workflow_dispatch:
+
+env:
+  version: 1.2.11
+
+jobs:
+  init-release:
+    runs-on: windows-latest
+    outputs:
+      output1: "${{ steps.create_release.outputs.upload_url }}"
+    steps:
+      - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+        with:
+          delete_release: true # default: false
+          tag_name: ${{ env.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create tag
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "refs/tags/${{ env.version }}",
+              sha: context.sha
+            })
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.version }}
+          release_name: zlib-${{ env.version }}
+          draft: false
+          prerelease: false
+
+      - name: Set upload url
+        run: |
+          echo "::set-output name=y::${{ steps.create_release.outputs.upload_url }}"
+          echo "${{ steps.create_release.outputs.upload_url }}"
+
+  windows-build:
+    needs: init-release
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        build_type: ["Debug", "Release"]
+        arch: ["x86", "x64"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Install Server-Media-Foundation
+        shell: powershell
+        run: |
+          Install-WindowsFeature Server-Media-Foundation
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Download zlib
+        run: |
+          curl -L http://www.zlib.net/zlib1211.zip
+          7z x zlib1211.zip
+          ren zlib-1.2.11 zlib
+
+      - name: Build zlib on Windows
+        run: |
+          . ".\build.ps1"
+          ls
+          BuildForWindows ${{matrix.arch}} ${{matrix.build_type}}
+
+      - name: Compress Package on Windows
+        run: |
+          7z a zlib-${{ github.event.inputs.tag }}.zip ./build/install/* -r
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.init.outputs.output1 }}
+          asset_path: zlib-${{ github.event.inputs.tag }}.zip
+          asset_name: zlib-${{ github.event.inputs.tag }}-${{matrix.build_type}}-${{matrix.arch}}-${{runner.os}}.zip
+          asset_content_type: application/zip
+
+  linux-build:
+    needs: init-release
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        build_type: ["Debug", "Release"]
+        arch: ["x64"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: Download zlib
+        run: |
+          wget http://www.zlib.net/zlib1211.zip
+          zip -qq zlib1211.zip
+          mv zlib-1.2.11 zlib
+
+      - name: Build zlib on Linux
+        shell: bash
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DCMAKE_INSTALL_PREFIX=install ../zlib
+          make && make install
+
+      - name: Compress Package on Ubuntu
+        run: |
+          cd ./build/install
+          zip -r zlib-${{ github.event.inputs.tag }}.zip ./*
+          mv zlib-${{ github.event.inputs.tag }}.zip ../../zlib-${{ github.event.inputs.tag }}.zip
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.init.outputs.output1 }}
+          asset_path: zlib-${{ github.event.inputs.tag }}.zip
+          asset_name: zlib-${{ github.event.inputs.tag }}-${{matrix.build_type}}-${{matrix.arch}}-${{runner.os}}.zip
+          asset_content_type: application/zip
