@@ -77,9 +77,10 @@ jobs:
 
       - name: Download zlib
         run: |
-          (new-object Net.WebClient).DownloadFile('http://www.zlib.net/zlib1211.zip','zlib1211.zip')
-          7z x zlib1211.zip
-          Rename-Item zlib-1.2.11 zlib
+          git clone https://github.com/madler/zlib.git
+          cd zlib
+          git checkout ${{ env.version }}
+          cd ..
 
       - name: Build zlib on Windows
         run: |
@@ -116,9 +117,10 @@ jobs:
           fetch-depth: 1
       - name: Download zlib
         run: |
-          wget http://www.zlib.net/zlib1211.zip
-          unzip -qq zlib1211.zip
-          mv zlib-1.2.11 zlib
+          git clone https://github.com/madler/zlib.git
+          cd zlib
+          git checkout ${{ env.version }}
+          cd ..
 
       - name: Build zlib on Linux
         shell: bash
