@@ -2,9 +2,15 @@ name: build zlib with version 1.2.11
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "choice zlib version"
+        required: true
+        default: "v1.2.11"
 
 env:
-  version: 1.2.11
+  package_name: "zlib"
+  version: ${{ github.event.inputs.tag }}
 
 jobs:
   init:
@@ -38,7 +44,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.version }}
-          release_name: zlib-${{ env.version }}
+          release_name: ${{ package_name }}-${{ env.version }}
           draft: false
           prerelease: false
 
@@ -83,7 +89,7 @@ jobs:
 
       - name: Compress Package on Windows
         run: |
-          7z a zlib-${{ env.version }}.zip ./build/install/* -r
+          7z a ${{ package_name }}-${{ env.version }}.zip ./build/install/* -r
 
       - name: Upload Release Asset
         id: upload-release-asset
@@ -92,8 +98,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.init.outputs.output1 }}
-          asset_path: zlib-${{ env.version }}.zip
-          asset_name: zlib-${{ env.version }}-${{matrix.build_type}}-${{matrix.arch}}-${{runner.os}}.zip
+          asset_path: ${{ package_name }}-${{ env.version }}.zip
+          asset_name: ${{ package_name }}-${{ env.version }}-${{matrix.build_type}}-${{matrix.arch}}-${{runner.os}}.zip
           asset_content_type: application/zip
 
   linux-build:
@@ -125,8 +131,8 @@ jobs:
       - name: Compress Package on Ubuntu
         run: |
           cd ./build/install
-          zip -r zlib-${{ env.version }}.zip ./*
-          mv zlib-${{ env.version }}.zip ../../zlib-${{ env.version }}.zip
+          zip -r ${{ package_name }}-${{ env.version }}.zip ./*
+          mv ${{ package_name }}-${{ env.version }}.zip ../../${{ package_name }}-${{ env.version }}.zip
 
       - name: Upload Release Asset
         id: upload-release-asset
@@ -135,6 +141,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.init.outputs.output1 }}
-          asset_path: zlib-${{ env.version }}.zip
-          asset_name: zlib-${{ env.version }}-${{matrix.build_type}}-${{matrix.arch}}-${{runner.os}}.zip
+          asset_path: ${{ package_name }}-${{ env.version }}.zip
+          asset_name: ${{ package_name }}-${{ env.version }}-${{matrix.build_type}}-${{matrix.arch}}-${{runner.os}}.zip
           asset_content_type: application/zip
