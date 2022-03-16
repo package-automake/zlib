@@ -71,7 +71,7 @@ jobs:
 
       - name: Download zlib
         run: |
-          curl -L http://www.zlib.net/zlib1211.zip
+          (new-object Net.WebClient).DownloadFile('http://www.zlib.net/zlib1211.zip','zlib1211.zip')
           7z x zlib1211.zip
           Rename-Item zlib-1.2.11 zlib
 
